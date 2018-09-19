@@ -1,0 +1,7 @@
+/node_modules
+/src
+/public
+yarn.lock
+README.md
+package.json
+.gitignore

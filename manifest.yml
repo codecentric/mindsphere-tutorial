@@ -1,0 +1,7 @@
+applications:
+- name: tutorial
+  instances: 1
+  path: build
+  memory: 64MB
+  routes:
+  - route: tutorial-codecent.apps.eu1.mindsphere.io

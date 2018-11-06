@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
+import Gauge from 'react-svg-gauge';
 import axios from 'axios';
-import logo from './logo.svg';
 import './App.css';
 
 class App extends Component {
@@ -26,14 +26,24 @@ class App extends Component {
         'Content-Type': 'application/json'
       }
     }).catch(console.log);
-    this.setState({ data: result.data });
     console.log(result);
+    if (result && result.data && (result.data.length > 0)) {
+      this.setState({ data: result.data[0] });
+    }
   }
 
   render() {
     return (
-      <div className="App">
-        <p>{JSON.stringify(this.state.data, null, 2)}</p>
+      <div className='App'>
+        { this.state.data.Illuminance ?
+          <Gauge label='Illuminance'
+            value={this.state.data.Illuminance}
+            min={0}
+            max={1500}
+            valueFormatter={(number) => (`${number} lux`)}
+            valueLabelStyle={{fontSize: '15pt'}} /> :
+          <p>Keine Daten gefunden.</p>
+        }
       </div>
     );
   }

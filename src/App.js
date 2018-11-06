@@ -16,10 +16,22 @@ class App extends Component {
     };
   }
 
-  async componentDidMount() {
-    await this.loadAmbientLight();
-    await this.loadBarometer();
-    await this.loadTemperature();
+  componentDidMount() {
+    this.ambientLightInterval = setInterval(this.loadAmbientLight, 5000);
+    this.barometerInterval = setInterval(this.loadBarometer, 5000);
+    this.temperatureInterval = setInterval(this.loadTemperature, 5000);
+  }
+
+  componentWillUnmount() {
+    if (this.ambientLightInterval) {
+      clearInterval(this.ambientLightInterval);
+    }
+    if (this.barometerInterval) {
+      clearInterval(this.barometerInterval);
+    }
+    if (this.temperatureInterval) {
+      clearInterval(this.temperatureInterval);
+    }
   }
 
   loadData = async (dataSet) => {

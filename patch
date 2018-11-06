@@ -1,0 +1,114 @@
+# HG changeset patch
+# User Nils Wloka <nils.wloka@codecentric.de>
+# Date 1541494314 -3600
+#      Tue Nov 06 09:51:54 2018 +0100
+# Node ID 0542e026a190318bd7bdfc1267477b81cc5f3e3d
+# Parent  29f0c6f1ee55dc29b6ede12d3a8d9e09b349403a
+Update TinkerForge library version and add new bricklets.
+
+diff -r 29f0c6f1ee55 -r 0542e026a190 java-agent/pom.xml
+--- a/java-agent/pom.xml	Wed Oct 03 10:54:28 2018 +0200
++++ b/java-agent/pom.xml	Tue Nov 06 09:51:54 2018 +0100
+@@ -16,7 +16,7 @@
+         <commons.io.version>2.4</commons.io.version>
+         <jssc.version>2.6.0</jssc.version>
+         <logback.version>1.0.13</logback.version>
+-        <tinkerforge.version>2.1.17</tinkerforge.version>
++        <tinkerforge.version>2.1.20</tinkerforge.version>
+     </properties>
+ 
+ 	<modules>
+diff -r 29f0c6f1ee55 -r 0542e026a190 java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/BarometerV2Bricklet.java
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/BarometerV2Bricklet.java	Tue Nov 06 09:51:54 2018 +0100
+@@ -0,0 +1,38 @@
++package c8y.tinkerforge.bricklet;
++
++import c8y.Barometer;
++import c8y.BarometerMeasurement;
++import com.tinkerforge.BrickletBarometerV2;
++import com.tinkerforge.Device;
++
++import java.math.BigDecimal;
++
++public class BarometerV2Bricklet extends BaseSensorBricklet {
++    private static final double ALT_SCALE = 100.0;
++    private static final double PRESS_SCALE = 1000.0;
++
++    private BarometerMeasurement barometer = new BarometerMeasurement();
++
++
++    public BarometerV2Bricklet(String id, Device device) {
++        super(id, device, "Barometer", new Barometer());
++    }
++
++    @Override
++    public void initialize() throws Exception {
++    }
++
++    @Override
++    public void run() {
++        try {
++            BrickletBarometerV2 b = (BrickletBarometerV2) getDevice();
++            BigDecimal p = new BigDecimal((double) b.getAirPressure() / PRESS_SCALE);
++            barometer.setPressure(p);
++            BigDecimal a = new BigDecimal((double) b.getAltitude() / ALT_SCALE);
++            barometer.setAltitude(a);
++            super.sendMeasurement(barometer);
++        } catch (Exception x) {
++            logger.warn("Cannot read barometer bricklet", x);
++        }
++    }
++}
+diff -r 29f0c6f1ee55 -r 0542e026a190 java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/BrickletFactory.java
+--- a/java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/BrickletFactory.java	Wed Oct 03 10:54:28 2018 +0200
++++ b/java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/BrickletFactory.java	Tue Nov 06 09:51:54 2018 +0100
+@@ -131,6 +131,10 @@
+ 			return new LightBrickletV2(uid, new BrickletAmbientLightV2(uid, ipcon));
+ 		case BrickletHumidityV2.DEVICE_IDENTIFIER:
+ 			return new 	HumidityBrickletV2(uid, new BrickletHumidityV2(uid, ipcon));
++		case BrickletTemperatureV2.DEVICE_IDENTIFIER:
++			return new TemperatureV2Bricklet(uid, new BrickletTemperatureV2(uid, ipcon));
++		case BrickletBarometerV2.DEVICE_IDENTIFIER:
++			return new BarometerV2Bricklet(uid, new BrickletBarometerV2(uid, ipcon));
+ 		default:
+ 			throw new IllegalArgumentException("Unknown device identifier: "
+ 					+ deviceIdentifier);
+diff -r 29f0c6f1ee55 -r 0542e026a190 java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/TemperatureV2Bricklet.java
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/java-agent/tinkerforge-driver/src/main/java/c8y/tinkerforge/bricklet/TemperatureV2Bricklet.java	Tue Nov 06 09:51:54 2018 +0100
+@@ -0,0 +1,34 @@
++package c8y.tinkerforge.bricklet;
++
++import c8y.TemperatureMeasurement;
++import c8y.TemperatureSensor;
++import com.tinkerforge.BrickletTemperatureV2;
++import com.tinkerforge.Device;
++
++import java.math.BigDecimal;
++
++public class TemperatureV2Bricklet extends BaseSensorBricklet {
++
++    public TemperatureV2Bricklet(String id, Device device) {
++        super(id, device, "Temperature", new TemperatureSensor());
++    }
++
++    private TemperatureMeasurement temperature = new TemperatureMeasurement();
++
++    @Override
++    public void initialize() throws Exception {
++        // Nothing to do here.
++    }
++
++    @Override
++    public void run() {
++        try {
++            BrickletTemperatureV2 tb = (BrickletTemperatureV2) getDevice();
++            BigDecimal t = new BigDecimal((double) tb.getTemperature() / 100.0);
++            temperature.setTemperature(t);
++            super.sendMeasurement(temperature);
++        } catch (Exception x) {
++            logger.warn("Cannot read temperature from bricklet", x);
++        }
++    }
++}

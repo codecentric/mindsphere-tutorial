@@ -1,10 +1,13 @@
 import React, { Component } from 'react';
 import Gauge from 'react-svg-gauge';
-import axios from 'axios';
+import AWS from 'aws-sdk/global';
+import AWSMqttClient from 'aws-mqtt';
 import './App.css';
 
-const baseUrl = '/api/iottimeseries/v3/timeseries/';
-const deviceId = '1310450cbc204d238c8f4662987aa01f';
+AWS.config.region = 'eu-west-1';
+AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+  IdentityPoolId: 'eu-west-1:4551bdb0-fa01-44f5-b8f1-81452a4057c7'
+});
 
 class App extends Component {
   constructor() {
@@ -17,47 +20,54 @@ class App extends Component {
   }
 
   componentDidMount() {
-    this.ambientLightInterval = setInterval(this.loadAmbientLight, 5000);
-    this.barometerInterval = setInterval(this.loadBarometer, 5000);
-    this.temperatureInterval = setInterval(this.loadTemperature, 5000);
+    this.client = new AWSMqttClient({
+      region: AWS.config.region,
+      credentials: AWS.config.credentials,
+      endpoint: 'a3hwead7lubokm.iot.eu-west-1.amazonaws.com',
+      expires: 600,
+      connectTimeout: 60 * 1000,
+      clientId: 'mqtt-client-' + (Math.floor((Math.random() * 100000) + 1)),
+      will: {
+        topic: 'abortMessage',
+        payload: 'Connection closed abnormally',
+        qos: 0,
+        retain: false
+      }
+    });
+    console.log('client initialised');
+    this.client.on('connect', () => {
+      console.log('connected');
+      this.client.subscribe('test_topic');
+    });
+    this.client.on('message', (topic, message) => {
+      const result = JSON.parse(message.toString('utf8'));
+      console.log(result);
+      if (topic === 'test_topic') {
+        this.setState({
+          ambientLight: { Illuminance: result.illuminance },
+          barometer: { Pressure: Math.floor(result.airPressure / 10) },
+          temperature: { Temperature: result.temperature }
+        });
+      }
+    });
+    this.client.on('close', () => {
+      console.log('close');
+    });
+    this.client.on('offline', () => {
+      console.log('offline');
+    });
+    this.client.on('error', (error) => {
+      console.error(error);
+    });
+    this.client.on('reconnect', () => {
+      console.log('reconnect');
+    });
+    this.client.on('end', () => {
+      console.log('reconnect');
+    });
   }
 
   componentWillUnmount() {
-    if (this.ambientLightInterval) {
-      clearInterval(this.ambientLightInterval);
-    }
-    if (this.barometerInterval) {
-      clearInterval(this.barometerInterval);
-    }
-    if (this.temperatureInterval) {
-      clearInterval(this.temperatureInterval);
-    }
-  }
-
-  loadData = async (dataSet) => {
-    const result = await axios.get(baseUrl + deviceId + '/' + dataSet, {
-      xrsfCookieName: 'x-xsrf-token',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    }).catch(console.log);
-    console.log(result);
-    if (result && result.data && (result.data.length > 0)) {
-      this.setState({ [dataSet]: result.data[0] });
-    }
-  }
-
-  loadAmbientLight = async () => {
-    await this.loadData('ambientLight');
-  }
-
-  loadBarometer = async () => {
-    await this.loadData('barometer');
-  }
-
-  loadTemperature = async () => {
-    await this.loadData('temperature');
   }
 
   render() {
@@ -68,12 +78,6 @@ class App extends Component {
           min={0}
           max={1500}
           valueFormatter={(number) => (`${number} lux`)}
-          valueLabelStyle={{fontSize: '15pt'}} />
-        <Gauge label='Altitude'
-          value={ this.state.barometer.Altitude ? this.state.barometer.Altitude : 0 }
-          min={0}
-          max={10000}
-          valueFormatter={(number) => (`${number} m`)}
           valueLabelStyle={{fontSize: '15pt'}} />
         <Gauge label='Pressure'
           value={ this.state.barometer.Pressure ? this.state.barometer.Pressure : 0 }
